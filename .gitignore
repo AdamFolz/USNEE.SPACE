@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# os/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# local agent scratch (не часть продукта)
+.tmp_*
+_av*.html
+_avito*.html
+avito_jina.txt
+nul
+hermes/

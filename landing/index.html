@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="USNEE — дневник употребления. Отметь, что было, и посмотри, как это складывается. Данные остаются на телефоне." />
+<meta name="theme-color" content="#12100d" />
+<title>USNEE — дневник употребления. Без лекций.</title>
+    <link rel="stylesheet" href="../fonts/fonts.css" />
+<style>
+/* ============ TOKENS (USNEE) ============ */
+:root {
+  --bg-void: #0f0d0b;
+  --bg-base: #12100d;
+  --surface-1: #161310;
+  --surface-2: #1d1915;
+  --surface-3: #26211b;
+  --text-1: #efe8db;
+  --text-2: #a79e8f;
+  --text-3: #6e675c;
+  --brand: #c94f4f;
+  --brand-2: #d9615f;
+  --accent: #e0766f;
+  --cyan: #6e8fa3;
+  --success: #8aa06e;
+  --warning: #c9974e;
+  --danger: #d9615f;
+  --border: rgba(239, 232, 219, 0.10);
+  --border-strong: rgba(239, 232, 219, 0.24);
+  --focus: #c94f4f;
+  --radius-card: 0.875rem;
+  --radius-hero: 1rem;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.45);
+  --shadow-hero: 0 24px 70px rgba(0, 0, 0, 0.55);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fast: 120ms;
+  --normal: 200ms;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-snap-type: y proximity; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-2);
+  font-family: 'Onest', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ CANVAS FIELD (3D scene) ============ */
+#field {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ============ TOP NAV ============ */
+#topnav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px clamp(20px, 4vw, 48px);
+  transition: background-color var(--normal) var(--ease), border-color var(--normal) var(--ease), box-shadow var(--normal) var(--ease);
+  border-bottom: 1px solid transparent;
+}
+#topnav.scrolled {
+  background: rgba(7, 8, 20, 0.72);
+  border-bottom-color: var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-1);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 0 24px rgba(201, 79, 79, 0.35), inset 0 0 12px rgba(201, 79, 79, 0.15);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-2);
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+}
+.nav-links a {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color var(--fast) var(--ease), background-color var(--fast) var(--ease);
+}
+.nav-links a:hover { color: var(--text-1); background: rgba(201, 79, 79, 0.12); }
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #12100d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 6px 24px rgba(201, 79, 79, 0.35);
+  transition: transform var(--normal) var(--ease), box-shadow var(--normal) var(--ease), background-color var(--normal) var(--ease);
+}
+.nav-cta:hover { transform: translateY(-2px); background: var(--brand-2); box-shadow: 0 10px 32px rgba(201, 79, 79, 0.5); }
+.nav-cta .soon { font-size: 8px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 8px; background: rgba(217, 97, 95, 0.18); color: var(--danger); }
+
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+}
+
+/* ============ PROGRESS BAR ============ */
+#progressBar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 0%;
+  z-index: 60;
+  background: var(--brand-2);
+  box-shadow: 0 0 12px rgba(201, 79, 79, 0.7);
+  pointer-events: none;
+}
+
+/* ============ LAYOUT ============ */
+#scroll-container {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.section { position: relative; pointer-events: none; scroll-snap-align: start; will-change: transform; }
+.section > * { pointer-events: auto; }
+
+.wrap {
+  width: min(1080px, 100% - 48px);
+  margin-inline: auto;
+}
+
+/* ============ HERO ============ */
+.hero {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  padding: clamp(28px, 6vh, 72px) 24px 0;
+  gap: 22px;
+}
+
+.hero-tag {
+  margin-top: clamp(24px, 8vh, 90px);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--brand-2);
+  text-shadow: 0 0 24px rgba(201, 79, 79, 0.45);
+}
+
+.hero h1 {
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(34px, 7vw, 84px);
+  line-height: 1.12;
+  letter-spacing: -0.5px;
+  color: var(--text-1);
+  max-width: 15ch;
+  text-shadow: 0 2px 40px rgba(0, 0, 0, 0.65);
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--brand-2);
+  text-shadow: 0 0 34px rgba(201, 79, 79, 0.5), 0 0 90px rgba(201, 79, 79, 0.18);
+}
+
+.hero-sub {
+  font-size: clamp(15px, 1.6vw, 18px);
+  font-weight: 300;
+  line-height: 1.75;
+  max-width: 540px;
+  color: var(--text-2);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* ============ BUTTONS ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--normal) var(--ease), box-shadow var(--normal) var(--ease), border-color var(--normal) var(--ease), background-color var(--normal) var(--ease);
+}
+.btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.btn-primary {
+  background: var(--brand);
+  color: #12100d;
+  box-shadow: 0 8px 32px rgba(201, 79, 79, 0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  background: var(--brand-2);
+  box-shadow: 0 14px 44px rgba(201, 79, 79, 0.5);
+}
+
+.btn-ghost {
+  background: rgba(20, 24, 42, 0.8);
+  color: var(--text-1);
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+}
+.btn-ghost:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55), 0 0 24px rgba(201, 79, 79, 0.15);
+}
+
+.btn:focus-visible, a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.pill-soon {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(217, 97, 95, 0.45);
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+/* ============ SCROLL HINT ============ */
+.scroll-hint {
+  margin-top: auto;
+  margin-bottom: clamp(16px, 6vh, 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.scroll-hint span {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.scroll-line {
+  width: 2px;
+  height: 44px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  box-shadow: 0 0 14px rgba(201, 79, 79, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--brand-2);
+  animation: scrollPulse 2.2s var(--ease) infinite;
+}
+@keyframes scrollPulse {
+  0% { transform: translateY(-100%); }
+  55%, 100% { transform: translateY(100%); }
+}
+
+/* ============ MANIFESTO ============ */
+.manifesto {
+  min-height: 90svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  text-align: center;
+  padding: 96px 24px;
+}
+.section-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.manifesto h2 {
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(24px, 4vw, 44px);
+  line-height: 1.35;
+  max-width: 860px;
+  color: var(--text-1);
+  text-shadow: 0 2px 34px rgba(0, 0, 0, 0.6);
+}
+.manifesto h2 em {
+  font-style: normal;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(224, 120, 244, 0.35);
+}
+
+/* ============ FEATURES ============ */
+.features {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(40px, 6vh, 64px);
+  padding: 96px 24px;
+  text-align: center;
+}
+.features-head h2 {
+  margin-top: 14px;
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(24px, 4vw, 40px);
+  color: var(--text-1);
+}
+.features-head h2 em { font-style: normal; color: var(--brand-2); }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  width: 100%;
+  max-width: 1040px;
+  text-align: left;
+}
+@media (max-width: 960px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+
+.card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 210px;
+  overflow: hidden;
+  transition: transform var(--normal) var(--ease), border-color var(--normal) var(--ease), box-shadow var(--normal) var(--ease);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--surface-3);
+  opacity: 0;
+  transition: opacity var(--normal) var(--ease);
+}
+.card:hover {
+  transform: translateY(-6px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hero), 0 0 34px rgba(201, 79, 79, 0.12);
+}
+.card:hover::before { opacity: 1; }
+
+.card-icon {
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--brand-2);
+  box-shadow: 0 0 18px rgba(201, 79, 79, 0.18);
+}
+.card-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.card:nth-child(2) .card-icon { color: var(--cyan); box-shadow: 0 0 18px rgba(110, 143, 163, 0.18); }
+.card:nth-child(3) .card-icon { color: var(--accent); box-shadow: 0 0 18px rgba(224, 120, 244, 0.18); }
+.card:nth-child(4) .card-icon { color: var(--success); box-shadow: 0 0 18px rgba(138, 160, 110, 0.18); }
+
+.card-num {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.card h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.2px;
+}
+.card p {
+  font-size: 13.5px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+
+/* ============ HOW ============ */
+.how {
+  min-height: 90svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(40px, 6vh, 60px);
+  padding: 96px 24px;
+  text-align: center;
+}
+.how-head h2 {
+  margin-top: 14px;
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(24px, 4vw, 40px);
+  color: var(--text-1);
+}
+.how-head h2 em { font-style: normal; color: var(--cyan); text-shadow: 0 0 30px rgba(110, 143, 163, 0.3); }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  width: 100%;
+  max-width: 1040px;
+  text-align: left;
+}
+@media (max-width: 960px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+
+.step {
+  position: relative;
+  padding: 24px 22px 26px;
+  border-radius: var(--radius-card);
+  background: rgba(29, 25, 21, 0.75);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--normal) var(--ease), border-color var(--normal) var(--ease);
+}
+.step:hover { transform: translateY(-4px); border-color: rgba(110, 143, 163, 0.35); }
+.step-num {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--cyan);
+  opacity: 0.85;
+  text-shadow: 0 0 26px rgba(110, 143, 163, 0.3);
+  line-height: 1;
+}
+.step h3 {
+  margin-top: 14px;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.step p {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+
+/* ============ QUOTE ============ */
+.quote-section {
+  min-height: 80svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  text-align: center;
+  padding: 96px 24px;
+}
+.quote-section blockquote {
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(20px, 3.2vw, 36px);
+  line-height: 1.45;
+  max-width: 780px;
+  color: var(--text-1);
+  text-shadow: 0 2px 34px rgba(0, 0, 0, 0.6);
+}
+.quote-section blockquote em { font-style: normal; color: var(--success); text-shadow: 0 0 30px rgba(138, 160, 110, 0.3); }
+.quote-attr {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ============ CTA ============ */
+.cta-section {
+  min-height: 90svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  padding: 96px 24px;
+}
+.cta-section h2 {
+  font-family: 'Lora', Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(30px, 5.5vw, 60px);
+  line-height: 1.15;
+  color: var(--text-1);
+  text-shadow: 0 2px 44px rgba(0, 0, 0, 0.65);
+}
+.cta-section h2 em {
+  font-style: normal;
+  color: var(--brand-2);
+  text-shadow: 0 0 40px rgba(201, 79, 79, 0.5), 0 0 100px rgba(201, 79, 79, 0.2);
+}
+.cta-sub {
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-2);
+  max-width: 460px;
+  line-height: 1.7;
+}
+.safety-note {
+  margin-top: 18px;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-3);
+  max-width: 480px;
+  line-height: 1.7;
+}
+.safety-note strong { color: var(--warning); font-weight: 600; }
+
+/* ============ FOOTER ============ */
+footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 34px 24px 44px;
+  text-align: center;
+  background: var(--bg-void);
+}
+.footer-inner {
+  width: min(1080px, 100%);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Lora', Georgia, serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.footer-brand .brand-mark { width: 28px; height: 28px; font-size: 12px; border-radius: 8px; }
+footer p {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-3);
+  max-width: 560px;
+  line-height: 1.7;
+}
+
+/* ============ REVEAL ============ */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+  transition-delay: calc(var(--d, 0) * 130ms);
+  will-change: opacity, transform;
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============ ULTRAWIDE 21:9 / SHORT HEIGHT ============ */
+@media (min-aspect-ratio: 18/9), (min-width: 1800px) {
+  .wrap { width: min(1480px, 100% - 96px); }
+  .hero {
+    min-height: 100svh;
+    justify-content: center;
+    padding: clamp(64px, 8vh, 96px) 24px clamp(24px, 4vh, 48px);
+    gap: 16px;
+  }
+  .hero-tag { margin-top: 0; }
+  .hero h1 {
+    font-size: clamp(40px, 3.4vw, 68px);
+    max-width: 18ch;
+    line-height: 1.08;
+  }
+  .hero-sub { max-width: 640px; font-size: 17px; }
+  .hero-actions { margin-top: 4px; }
+  .card-grid, .steps { max-width: 1320px; margin-inline: auto; }
+  .section-title, .features h2, .how h2 { font-size: clamp(28px, 2.4vw, 40px); }
+}
+
+/* Short ultrawide panels (e.g. 2560×1080) — stop vertical crush / empty sides */
+@media (max-height: 920px) and (min-width: 1400px) {
+  .hero {
+    min-height: auto;
+    padding: 88px 24px 36px;
+    gap: 14px;
+  }
+  .hero-tag { margin-top: 0; }
+  .hero h1 { font-size: clamp(36px, 4.2vh, 56px); }
+  .hero-sub { font-size: 15px; line-height: 1.55; max-width: 560px; }
+  .btn { min-height: 46px; padding: 0 22px; }
+  .section { scroll-snap-align: none; }
+  .card-grid, .steps { gap: 16px; }
+  .card, .step { padding: 18px; }
+  [data-reveal] { transform: translateY(16px); }
+}
+
+@media (min-width: 2400px) {
+  .wrap { width: min(1680px, 100% - 120px); }
+  .hero h1 { font-size: 64px; }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; scroll-snap-type: none; }
+  [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .scroll-line::after { animation: none; }
+  #field { display: none; }
+  .card:hover, .step:hover, .btn:hover { transform: none; }
+  .section { transform: none !important; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="field" aria-hidden="true"></canvas>
+<div id="progressBar" aria-hidden="true"></div>
+
+<!-- ============ TOP NAV ============ -->
+<nav id="topnav" aria-label="Основная навигация">
+  <a class="nav-brand" href="#top" aria-label="USNEE — наверх">
+    <span class="brand-mark" aria-hidden="true">U</span>
+    USNEE
+  </a>
+  <ul class="nav-links">
+    <li><a href="#manifesto">Философия</a></li>
+    <li><a href="#features">Что внутри</a></li>
+    <li><a href="#how">Как это</a></li>
+    <li><a href="#where">Где открыть</a></li>
+    <li><a href="https://t.me/usnee_bot" target="_blank" rel="noopener noreferrer">Открыть</a></li>
+  </ul>
+  <a class="nav-cta" href="https://t.me/usnee_bot" target="_blank" rel="noopener noreferrer">Открыть</a>
+</nav>
+
+<div id="scroll-container">
+
+  <!-- ============ HERO ============ -->
+  <section class="section hero" data-stage="0" id="top" aria-label="USNEE — главная">
+    <p class="hero-tag" data-reveal data-delay="1">В Telegram · записи на телефоне</p>
+    <h1 data-reveal data-delay="2">Дневник употребления.<br /><em>Без лекций.</em></h1>
+    <p class="hero-sub" data-reveal data-delay="3">
+      Отметь, что было. Через неделю уже не вспомнить — запись держит числа.
+      Данные остаются на телефоне, не в аккаунте.
+    </p>
+    <div class="hero-actions" data-reveal data-delay="4">
+      <a class="btn btn-primary" href="https://t.me/usnee_bot" target="_blank" rel="noopener noreferrer" aria-label="Открыть USNEE в Telegram">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>
+        Открыть в Telegram
+      </a>
+      <a class="btn btn-ghost" href="#features">Что внутри</a>
+    </div>
+    <div class="scroll-hint" data-reveal data-delay="5">
+      <span>Листай</span>
+      <div class="scroll-line" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- ============ MANIFESTO ============ -->
+  <section class="section manifesto" data-stage="1" id="manifesto" aria-label="Философия">
+    <span class="section-label" data-reveal>Философия</span>
+    <h2 data-reveal data-delay="1">
+      Не учит жить. Просто место, куда записываешь,
+      чтобы самому видеть картину — <em>без рейтингов и стыда</em>.
+    </h2>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section features" data-stage="2" id="features" aria-label="Возможности">
+    <div class="features-head">
+      <span class="section-label" data-reveal>Что внутри</span>
+      <h2 data-reveal data-delay="1">Что <em>умеет</em></h2>
+    </div>
+    <div class="card-grid">
+      <article class="card" data-reveal data-delay="1">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <span class="card-num">01 · Быстро</span>
+        <h3>Быстрая запись</h3>
+        <p>Вещество, способ, сколько знаешь. Пустые поля можно оставить.</p>
+      </article>
+      <article class="card" data-reveal data-delay="2">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        <span class="card-num">02 · Приватно</span>
+        <h3>На этом телефоне</h3>
+        <p>Пишется на устройство, не в облако. PIN и шифрованный экспорт — если включишь.</p>
+      </article>
+      <article class="card" data-reveal data-delay="3">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+        <span class="card-num">03 · Честно</span>
+        <h3>Цифры, не оценка</h3>
+        <p>Сон, вода, самочувствие, неделя. Без рейтинга.</p>
+      </article>
+      <article class="card" data-reveal data-delay="4">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6Z"/><path d="M9.5 12l2 2 3.5-4"/></svg></div>
+        <span class="card-num">04 · Рядом</span>
+        <h3>Если срочно</h3>
+        <p>SOS-контакт и таймер. Скорую не вызывает — звони сам.</p>
+      </article>
+      <article class="card" data-reveal data-delay="5">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h13M4 12h13M4 17h9"/><path d="M20 5v6M17 8h6"/></svg></div>
+        <span class="card-num">05 · Пачкой</span>
+        <h3>Вспомнил вечером</h3>
+        <p>Все за день — в одном окне. Сохранятся по очереди, ничего не потеряется.</p>
+      </article>
+      <article class="card" data-reveal data-delay="6">
+        <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l3 5 5 1-4 4 1 5-5-2-5 2 1-5-4-4 5-1Z"/></svg></div>
+        <span class="card-num">06 · Ранг</span>
+        <h3>Темп, не оценка</h3>
+        <p>Ранг растёт от регулярности записей, а не от дозы. Аккаунт — по желанию, для копий.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ HOW ============ -->
+  <section class="section how" data-stage="3" id="how" aria-label="Как это работает">
+    <div class="how-head">
+      <span class="section-label" data-reveal>Как это работает</span>
+      <h2 data-reveal data-delay="1">Как <em>пользоваться</em></h2>
+    </div>
+    <div class="steps">
+      <div class="step" data-reveal data-delay="1">
+        <div class="step-num" aria-hidden="true">01</div>
+        <h3>Запиши</h3>
+        <p>Что, как и почему — парой касаний. Запись сохраняется мгновенно, даже без сети.</p>
+      </div>
+      <div class="step" data-reveal data-delay="2">
+        <div class="step-num" aria-hidden="true">02</div>
+        <h3>Посмотри сводку</h3>
+        <p>Неделя в цифрах показывает то, что по памяти не складывается.</p>
+      </div>
+      <div class="step" data-reveal data-delay="3">
+        <div class="step-num" aria-hidden="true">03</div>
+        <h3>Один шаг, не клятва</h3>
+        <p>Маленький шаг лучше большого обещания.</p>
+      </div>
+      <div class="step" data-reveal data-delay="4">
+        <div class="step-num" aria-hidden="true">04</div>
+        <h3>Данные твои</h3>
+        <p>Всё на твоём устройстве. Экспорт с шифрованием — если захочешь.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ WHERE ============ -->
+  <section class="section how" data-stage="4" id="where" aria-label="Где открыть">
+    <div class="how-head">
+      <span class="section-label" data-reveal>Где открыть</span>
+      <h2 data-reveal data-delay="1">Два входа. <em>Данные на телефоне.</em></h2>
+    </div>
+    <div class="steps">
+      <div class="step" data-reveal data-delay="1">
+        <div class="step-num" aria-hidden="true">01</div>
+        <h3>В Telegram</h3>
+        <p>Бот <strong>@usnee_bot</strong> открывает дневник прямо в чате-приложении.</p>
+      </div>
+      <div class="step" data-reveal data-delay="2">
+        <div class="step-num" aria-hidden="true">02</div>
+        <h3>В браузере</h3>
+        <p>Та же сборка по прямой ссылке. Можно добавить на домашний экран.</p>
+      </div>
+      <div class="step" data-reveal data-delay="3">
+        <div class="step-num" aria-hidden="true">03</div>
+        <h3>На телефоне</h3>
+        <p>Записи живут в приложении. В чате ничего не появилось — и это нормально.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="section cta-section" data-stage="4" id="cta" aria-label="Открыть USNEE">
+    <h2 data-reveal>Хватит читать. <em>Открывай.</em></h2>
+    <p class="cta-sub" data-reveal data-delay="1">
+      Mini App уже работает — открой по прямой ссылке или через бота @usnee_bot.
+    </p>
+    <div class="hero-actions" data-reveal data-delay="2">
+      <a class="btn btn-primary" href="https://t.me/usnee_bot" target="_blank" rel="noopener noreferrer" aria-label="Открыть USNEE в Telegram">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>
+        Открыть в Telegram
+      </a>
+      <a class="btn btn-ghost" href="https://usnee.space/" target="_blank" rel="noopener noreferrer">Открыть в браузере</a>
+    </div>
+    <p class="safety-note" data-reveal data-delay="3">
+      Приложение не вызывает скорую и не заменяет экстренные службы.<br />
+      При угрозе жизни — <strong>звони 112 сам</strong>.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-brand"><span class="brand-mark" aria-hidden="true">U</span> USNEE</span>
+    <p>Приватный трекер употребления. Сделано с заботой — без осуждения и без рекламы.<br />Данные не покидают твоё устройство, пока ты сам этого не захочешь.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================================================================
+     3D CAMERA FIELD — «полёт» сквозь частицы, привязанный к скроллу.
+     Canvas 2D-проекция (без three.js): глубина -> размер/яркость/скорость.
+     Позиция камеры интерполируется между keyframes секций (data-stage).
+  ================================================================ */
+  var canvas = document.getElementById('field');
+  var ctx = canvas.getContext('2d');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var MAX_DPR = 1.5;
+  var COLORS = ['201,79,79', '110,143,163', '201,151,78'];
+
+  var W = 0, H = 0;
+  var raf = null;
+  var running = !reduced;
+  var mouseX = 0, mouseY = 0;
+  var mouseActive = false;
+  var lastTime = 0;
+
+  var FOV = 1100;             // «фокус» камеры (пересчитывается в resize под 21:9)
+  var CAM_Z = 0;              // глубина полёта (растёт со скроллом)
+  var CAM_X = 0;              // боковое смещение (ракурс)
+  var CAM_Y = 0;              // вертикаль (ракурс)
+  var ROLL = 0;               // лёгкий крен
+
+  var depthA = 0.35, depthB = 1.25;   // диапазон глубины частиц
+  var COUNT = 150;
+
+  var P = [];                 // частицы: x,z (мир), y, size, color, seed
+
+  function seed(n) {
+    return function () {
+      n |= 0; n = (n + 0x6D2B79F5) | 0;
+      var t = Math.imul(n ^ (n >>> 15), 1 | n);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function initParticles() {
+    var rnd = seed(20260829);
+    P = [];
+    for (var i = 0; i < COUNT; i++) {
+      P.push({
+        x: (rnd() - 0.5) * 2,          // -1..1
+        z: depthA + rnd() * (depthB - depthA),
+        y: (rnd() - 0.5) * 1.6,
+        size: 0.5 + rnd() * 1.6,
+        color: COLORS[(rnd() * COLORS.length) | 0],
+        seed: rnd() * 100
+      });
+    }
+  }
+
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    /* 21:9 / ultrawide: keep FOV relative to shorter side so field isn't empty on sides */
+    var aspect = W / Math.max(H, 1);
+    FOV = 1100 * Math.min(1.35, Math.max(0.85, aspect / (16 / 9)));
+  }
+
+  /* Проекция 3D-точки в 2D с вращением/креном камеры */
+  function project(px, py, pz, roll) {
+    var rx = px - CAM_X;
+    var ry = py - CAM_Y;
+    var rz = pz - CAM_Z;
+    /* roll around Z (view axis) */
+    var c = Math.cos(roll), s = Math.sin(roll);
+    var rx2 = rx * c - ry * s;
+    var ry2 = rx * s + ry * c;
+    var scale = FOV / Math.max(rz, 0.08);
+    return {
+      x: W * 0.5 + rx2 * scale,
+      y: H * 0.5 + ry2 * scale,
+      s: scale
+    };
+  }
+
+  function draw(now) {
+    if (!running) return;
+    var dt = Math.min((now - lastTime) / 1000 || 0.016, 0.05);
+    lastTime = now;
+    var t = now * 0.001;
+
+    ctx.clearRect(0, 0, W, H);
+
+    /* фон — глубокое свечение (canvas light) */
+    var g1 = ctx.createRadialGradient(W * 0.5, H * 0.42, 0, W * 0.5, H * 0.42, Math.max(W, H) * 0.7);
+    g1.addColorStop(0, 'rgba(201,79,79,0.05)');
+    g1.addColorStop(1, 'rgba(201,79,79,0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, W, H);
+
+    /* частицы-«травы»: ближние крупнее и ярче, дальние мелкие и тусклые */
+    var items = [];
+    for (var i = 0; i < P.length; i++) {
+      var p = P[i];
+      var z = p.z - CAM_Z;
+      if (z < 0.06) { p.z += 1.1; z = p.z - CAM_Z; }  /* wrap за камерой */
+      var pp = project(p.x, p.y, p.z, ROLL);
+      var fade = Math.min(1, Math.max(0, (z - 0.1) / 0.5));       /* ближний fade */
+      var far = Math.min(1, Math.max(0, (2.2 - z) / 1.6));       /* дальний fade */
+      var alpha = fade * far * (0.25 + 0.5 * Math.abs(Math.sin(t * 1.1 + p.seed)));
+      var size = p.size * (pp.s / (FOV / 0.8)) * 3.2;
+      items.push({
+        x: pp.x, y: pp.y, size: size, alpha: alpha,
+        color: p.color, seed: p.seed, z: z
+      });
+    }
+
+    /* сортировка: дальние рисуются первыми */
+    items.sort(function (a, b) { return b.z - a.z; });
+
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k];
+      if (it.alpha <= 0.02 || it.size <= 0.1) continue;
+      ctx.beginPath();
+      ctx.arc(it.x, it.y, it.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + it.color + ',' + it.alpha.toFixed(3) + ')';
+      ctx.fill();
+      if (it.size > 2.6) {
+        ctx.beginPath();
+        ctx.arc(it.x, it.y, it.size * 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + it.color + ',' + (it.alpha * 0.12).toFixed(3) + ')';
+        ctx.fill();
+      }
+    }
+
+    /* поле-линии (горизонт) — редкие тонкие лучи из глубины */
+    ctx.lineWidth = 0.6;
+    for (var m = 0; m < 26; m++) {
+      var bx = ((m / 26) - 0.5) * 2.4;
+      var bz = 0.2 + (m % 5) * 0.24;
+      var p1 = project(bx, -0.9, bz, ROLL);
+      var p2 = project(bx * 0.7, -0.9, bz + 0.9, ROLL);
+      ctx.strokeStyle = 'rgba(201,79,79,' + (0.02 + 0.03 * ((m % 3) / 2)).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+
+    raf = requestAnimationFrame(draw);
+  }
+
+  /* ---- камера привязана к скроллу ---- */
+  var sectionOffsets = [];
+  function syncSections() {
+    sectionOffsets = [];
+    document.querySelectorAll('.section[data-stage]').forEach(function (sec) {
+      sectionOffsets.push(sec.offsetTop);
+    });
+  }
+
+  function getScrollT() {
+    var st = window.pageYOffset || document.documentElement.scrollTop;
+    var doc = document.documentElement.scrollHeight - window.innerHeight;
+    return doc > 0 ? Math.min(1, Math.max(0, st / doc)) : 0;
+  }
+
+  function updateCamera() {
+    var t = getScrollT();
+    /* keyframes: [scrollT, camX, camY, camZ, roll] — полёт по сценарию */
+    var kfs = [
+      [0.00, 0.0, 0.00, 0.00, 0.00],
+      [0.16, 0.0, 0.05, 0.28, 0.02],
+      [0.34, 0.4, 0.10, 0.55, -0.03],
+      [0.52, -0.4, 0.18, 0.80, 0.03],
+      [0.70, 0.3, -0.10, 1.05, -0.02],
+      [0.86, 0.0, -0.20, 1.30, 0.02],
+      [1.00, 0.0, -0.05, 1.45, 0.00]
+    ];
+    /* интерполяция между keyframes */
+    var i = 0;
+    while (i < kfs.length - 2 && kfs[i + 1][0] < t) i++;
+    var a = kfs[i], b = kfs[i + 1];
+    var range = b[0] - a[0];
+    var tt = range > 0 ? Math.max(0, Math.min(1, (t - a[0]) / range)) : 0;
+    var e = tt * tt * (3 - 2 * tt);   /* smoothstep */
+    CAM_X = a[1] + (b[1] - a[1]) * e;
+    CAM_Y = a[2] + (b[2] - a[2]) * e;
+    CAM_Z = a[3] + (b[3] - a[3]) * e;
+    ROLL = a[4] + (b[4] - a[4]) * e;
+  }
+
+  /* плавная прокрутка секций (навигация) */
+  function scrollToSection(id) {
+    var el = document.querySelector(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  /* ---- прогресс-бар и nav-фон ---- */
+  var progressBar = document.getElementById('progressBar');
+  var topnav = document.getElementById('topnav');
+  var ticking = false;
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      var t = getScrollT();
+      updateCamera();
+      if (progressBar) progressBar.style.width = (t * 100).toFixed(2) + '%';
+      if (topnav) topnav.classList.toggle('scrolled', (window.pageYOffset || document.documentElement.scrollTop) > 40);
+      ticking = false;
+    });
+  }
+
+  /* ---- навигация ---- */
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var href = a.getAttribute('href');
+      if (!href || href.length < 2 || href === '#top' && window.pageYOffset < 10) {
+        if (href === '#top') { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); }
+        return;
+      }
+      e.preventDefault();
+      scrollToSection(href);
+    });
+  });
+
+  /* ---- запуск ---- */
+  if (running) {
+    resize();
+    initParticles();
+    syncSections();
+
+    window.addEventListener('resize', function () { resize(); syncSections(); });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('touchmove', onScroll, { passive: true });
+    window.addEventListener('mousemove', function (e) {
+      mouseX = e.clientX; mouseY = e.clientY; mouseActive = true;
+    }, { passive: true });
+    window.addEventListener('mouseleave', function () { mouseActive = false; });
+
+    /* reveal on scroll */
+    var revealEls = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window && !reduced) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      revealEls.forEach(function (el) { io.observe(el); });
+    } else {
+      revealEls.forEach(function (el) { el.classList.add('revealed'); });
+    }
+
+    onScroll();
+    raf = requestAnimationFrame(draw);
+  }
+
+  /* reduced-motion: показать всё сразу, без полёта */
+  if (reduced) {
+    document.querySelectorAll('[data-reveal]').forEach(function (el) { el.classList.add('revealed'); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f0d0b" />
+  <link rel="icon" type="image/svg+xml" href="/usnee-splash-icon.svg" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>USNEE</title>
+  <script>
+    (function () {
+      if (!/\/landing(?:\/|$)/.test(location.pathname)) return;
+      if (!('serviceWorker' in navigator)) return;
+      if (sessionStorage.getItem('usnee-landing-bypass')) return;
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        if (!regs.length) return;
+        sessionStorage.setItem('usnee-landing-bypass', '1');
+        return Promise.all(regs.map(function (r) { return r.unregister(); }))
+          .then(function () { location.reload(); });
+      });
+    })();
+  </script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    html, body { background: #0f0d0b; color: #efe8db; margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #root { height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="boot-fallback" hidden style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0f0d0b;color:#efe8db;z-index:9999">
+    <p style="margin:0;font-size:17px;line-height:1.4">Приложение не загрузилось.</p>
+    <p style="margin:0;font-size:14px;opacity:.7;max-width:32ch">Обычно помогает сброс кеша: нажмите кнопку ниже — данные на устройстве останутся.</p>
+    <button id="boot-retry" type="button" style="padding:12px 20px;border-radius:12px;border:1px solid #3a332c;background:#1b1714;color:#efe8db;font-size:15px;cursor:pointer">Перезагрузить без кеша</button>
+  </div>
+  <script>
+    (function () {
+      var fallback = document.getElementById('boot-fallback');
+      var button = document.getElementById('boot-retry');
+
+      function showFallback() {
+        if (fallback) fallback.hidden = false;
+      }
+
+      // Если за 7 секунд ничего не отрисовалось — показываем понятное состояние
+      // вместо пустого экрана.
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (!root) return showFallback();
+        if (root.children.length === 0) showFallback();
+      }, 7000);
+
+      function unregisterAll() {
+        if (!('serviceWorker' in navigator)) return Promise.resolve();
+        return navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+        });
+      }
+
+      function clearCaches() {
+        if (typeof caches === 'undefined') return Promise.resolve();
+        return caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+        });
+      }
+
+      if (button) {
+        button.addEventListener('click', function () {
+          button.disabled = true;
+          button.textContent = 'Сбрасываю кеш…';
+          unregisterAll()
+            .then(clearCaches)
+            .catch(function () {})
+            .then(function () {
+              var url = location.pathname + '?r=' + Date.now();
+              location.replace(url);
+            });
+        });
+      }
+
+      // Один автоматический перезапуск, когда новый service worker забирает контроль.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (sessionStorage.getItem('usnee-sw-reloaded')) return;
+          sessionStorage.setItem('usnee-sw-reloaded', '1');
+          location.reload();
+        });
+      }
+    })();
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
