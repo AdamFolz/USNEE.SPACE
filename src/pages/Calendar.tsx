@@ -43,15 +43,23 @@ function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [entries, setEntries] = useState<ConsumptionEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     const start = startOfMonth(currentMonth).getTime();
     const end = endOfMonth(currentMonth).getTime();
-    const data = await getEntriesBetween(start, end);
-    setEntries(data);
-    setLoading(false);
+    try {
+      const data = await getEntriesBetween(start, end);
+      setEntries(data);
+    } catch {
+      setEntries([]);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [currentMonth]);
 
   useEffect(() => {
@@ -193,15 +201,17 @@ function Calendar() {
               return (
                 <button
                   key={day.toISOString()}
+                  type="button"
                   onClick={() => setSelectedDay(day)}
-                  className={`relative flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-transform active:scale-95 ${
+                  aria-label={`${format(day, 'd MMMM yyyy', { locale: ru })}${hasEntries ? ', есть записи' : ', записей нет'}`}
+                  className={`relative flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus ${
                     isCurrentMonth ? 'text-usnee-text' : 'text-usnee-text2/50'
                   }`}
                   style={dayStyle}
                 >
                   {day.getDate()}
                   {hasEntries && (
-                    <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-usnee-text/85" />
+                    <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-usnee-text/85" aria-hidden="true" />
                   )}
                 </button>
               );
@@ -232,13 +242,34 @@ function Calendar() {
 
           {/* Summary */}
           <div className="rounded-lg bg-usnee-surface p-4 text-center">
-            <p className="text-sm text-usnee-text2">
-              {entries.length === 0
-                ? 'Месяц чистый. Или ты просто забыл записывать?'
-                : `${formatCountRu(entries.length, RECORD_FORMS)} за этот месяц. ${
-                    entries.length > 15 ? 'Импрессивно.' : 'Умеренно.'
-                  }`}
-            </p>
+            {loadError ? (
+              <>
+                <p className="text-sm text-usnee-danger">Календарь не прочитался. Данные на устройстве, попробуй ещё раз.</p>
+                <button
+                  type="button"
+                  onClick={() => loadEntries()}
+                  className="mt-3 min-h-11 w-full rounded-lg border border-usnee-border bg-usnee-surface2 px-4 text-sm font-semibold text-usnee-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus"
+                >
+                  Повторить
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-usnee-text2">
+                {entries.length === 0
+                  ? 'Месяц чистый. Или ты просто забыл записывать?'
+                  : `${formatCountRu(entries.length, RECORD_FORMS)} за этот месяц. ${
+                      entries.length > 15 ? 'Импрессивно.' : 'Умеренно.'
+                    }`}
+              </p>
+            )}
+            {!loadError && entries.length === 0 && (
+              <a
+                href="#/add"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-usnee-border bg-usnee-surface2 px-4 text-sm font-semibold text-usnee-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus"
+              >
+                Записать день
+              </a>
+            )}
           </div>
         </>
       )}
@@ -246,7 +277,12 @@ function Calendar() {
       {/* Day detail modal */}
       {selectedDay && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-usnee-void/80 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-card bg-usnee-bg p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Записи за день"
+            className="w-full max-w-md rounded-card bg-usnee-bg p-4"
+          >
             {/* Modal header */}
             <div className="mb-4 flex items-center justify-between">
               <div>
@@ -260,10 +296,12 @@ function Calendar() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedDay(null)}
-                className="rounded-lg bg-usnee-surface p-2 text-usnee-text2 transition-colors hover:text-usnee-text active:scale-95"
+                aria-label="Закрыть"
+                className="grid min-h-11 min-w-11 place-items-center rounded-lg bg-usnee-surface p-2 text-usnee-text2 transition-colors hover:text-usnee-text active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 

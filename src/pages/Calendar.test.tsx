@@ -43,7 +43,7 @@ describe('Calendar', () => {
     ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach((wd) =>
       expect(screen.getByText(wd)).toBeInTheDocument()
     );
-    expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^15\b/ })).toBeInTheDocument();
     expect(mockedBetween).toHaveBeenCalledWith(
       startOfMonth(new Date(2026, 8, 1)).getTime(),
       endOfMonth(new Date(2026, 8, 1)).getTime()
@@ -56,11 +56,11 @@ describe('Calendar', () => {
     const { container } = render(<Calendar />);
     await flush();
 
-    const day15 = screen.getByRole('button', { name: '15' });
+    const day15 = screen.getByRole('button', { name: /^15\b/ });
     expect(day15.querySelector('span.bg-usnee-text\\/85')).not.toBeNull();
     expect(day15.style.backgroundColor).not.toBe('rgb(30, 30, 30)');
 
-    const day31 = screen.getByRole('button', { name: '31' });
+    const day31 = screen.getByRole('button', { name: /^31\b/ });
     expect(day31.querySelector('span')).toBeNull();
     expect(day31.style.backgroundColor).toBe('rgb(30, 30, 30)');
 
@@ -76,7 +76,7 @@ describe('Calendar', () => {
     render(<Calendar />);
     await flush();
     expect(screen.getByText(/Месяц чистый/)).toBeInTheDocument();
-    const day15 = screen.getByRole('button', { name: '15' });
+    const day15 = screen.getByRole('button', { name: /^15\b/ });
     expect(day15.querySelector('span')).toBeNull();
     expect(day15.style.backgroundColor).toBe('rgb(30, 30, 30)');
   });

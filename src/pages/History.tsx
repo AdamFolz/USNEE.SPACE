@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { EntrySyncRecord } from '../contracts';
 import type { Batch, ConsumptionEntry } from '../types';
@@ -108,6 +109,12 @@ export function History() {
         <Surface className="p-6 text-center">
           <p className="display text-title-md">Пока пусто</p>
           <p className="mt-1 text-body-sm text-usnee-text2">Первая запись — как первая строка. Дальше будет проще.</p>
+          <Link
+            to="/add"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-usnee-border bg-usnee-surface2 px-4 text-body-sm font-bold text-usnee-text transition-colors hover:border-usnee-borderStrong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus"
+          >
+            Сделать запись
+          </Link>
         </Surface>
       );
     }

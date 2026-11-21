@@ -249,10 +249,12 @@ export default function Partials() {
             )}
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => { setShowCreate(false); resetForm(); }}
-                className="big-tap flex-1 rounded-lg bg-usnee-surface2 py-3 text-sm font-medium text-usnee-text transition-all active:scale-95"
+                aria-label="Отменить создание партии"
+                className="big-tap flex-1 rounded-lg bg-usnee-surface2 py-3 text-sm font-medium text-usnee-text transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus"
               >
-                <X className="mx-auto h-4 w-4" />
+                <X className="mx-auto h-4 w-4" aria-hidden="true" />
               </button>
               <button
                 onClick={handleCreate}
@@ -320,9 +322,9 @@ export default function Partials() {
                       </p>
                     </div>
                     {batch.active ? (
-                      <span className="rounded-sm bg-usnee-success/15 px-2 py-1 text-[10px] font-medium uppercase text-usnee-success">Активна</span>
+                      <span className="rounded-sm bg-usnee-success/15 px-2 py-1 text-[11px] font-medium uppercase text-usnee-success">Активна</span>
                     ) : (
-                      <span className="rounded-sm bg-usnee-border px-2 py-1 text-[10px] font-medium uppercase text-usnee-text2">Закрыта</span>
+                      <span className="rounded-sm bg-usnee-border px-2 py-1 text-[11px] font-medium uppercase text-usnee-text2">Закрыта</span>
                     )}
                   </div>
                   <div className="mt-2">

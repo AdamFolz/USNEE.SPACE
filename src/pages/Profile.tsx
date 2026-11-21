@@ -5,7 +5,7 @@ import {
   getEntries, getMoods, getSleep, getFood, getWater, getBatches, listAccounts,
   addMood, addSleep, addFood, addWater
 } from '../utils/db';
-import { ACHIEVEMENTS } from '../constants/triggers';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORY_LABELS, type AchievementCategory } from '../constants/triggers';
 import { evaluateUnlockedAchievements } from '../domain/achievements';
 import { xpForAchievement, getAchievementTier } from '../domain/gamification';
 import { generateId, startOfDay, startOfWeek } from '../utils/date';
@@ -18,7 +18,7 @@ import {
   TrendingUp, Check, X, Plus, Minus, Activity, Settings, Zap
 } from 'lucide-react';
 import { formatCountRu, SLEEP_FORMS } from '../utils/pluralize';
-import { RANKS, daysWithEntries, rankSnapshot } from '../domain/ranks';
+import { RANKS, daysWithEntries, rankSnapshot, regularityScore } from '../domain/ranks';
 import { RANK_ICONS, RANK_TONE } from '../constants/rankVisuals';
 import { achievementIcon } from '../constants/achievementVisuals';
 
@@ -50,6 +50,7 @@ export default function Profile() {
   const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
   const [activeAccount, setActiveAccount] = useState<{ id: string; name: string } | null>(null);
   const activeAccountId = useAppStore((state) => state.settings.activeAccountId);
+  const emergencyContact = useAppStore((state) => state.settings.emergencyContact);
   const [sleepStats, setSleepStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -77,7 +78,14 @@ export default function Profile() {
         : 0;
       setSleepStats({ avg: Math.round(avg * 10) / 10, count: weekSleep.length });
 
-      setUnlockedAchievements(evaluateUnlockedAchievements({ entries: e, water: w, batches: b }));
+      setUnlockedAchievements(
+        evaluateUnlockedAchievements({
+          entries: e,
+          water: w,
+          batches: b,
+          hasEmergencyContact: Boolean(emergencyContact)
+        })
+      );
     if (activeAccountId) {
       listAccounts()
         .then((rows) => setActiveAccount(rows.find((row) => row.id === activeAccountId) ?? null))
@@ -87,7 +95,7 @@ export default function Profile() {
     }
     };
     load();
-  }, []);
+  }, [emergencyContact]);
 
   // Load clean days from localStorage
   useEffect(() => {
@@ -293,10 +301,31 @@ export default function Profile() {
           entries.filter((entry) => !entry.reversedAt).map((entry) => entry.timestamp),
           startOfDay
         ),
-        achievementsCount: unlockedAchievements.size
+        achievementsCount: unlockedAchievements.size,
+        regularity: regularityScore(
+          entries.filter((entry) => !entry.reversedAt).map((entry) => entry.timestamp),
+          startOfDay
+        )
       }),
     [entries, unlockedAchievements]
   );
+
+  const achievementGroups = useMemo(() => {
+    const order: AchievementCategory[] = ['start', 'regularity', 'variety', 'safety', 'social', 'usage', 'rare'];
+    return order
+      .map((category) => {
+        const items = ACHIEVEMENTS.filter((ach) => ach.category === category).sort(
+          (a, b) => Number(unlockedAchievements.has(b.id)) - Number(unlockedAchievements.has(a.id))
+        );
+        return {
+          id: category,
+          label: ACHIEVEMENT_CATEGORY_LABELS[category],
+          items,
+          unlockedCount: items.filter((ach) => unlockedAchievements.has(ach.id)).length
+        };
+      })
+      .filter((group) => group.items.length > 0);
+  }, [unlockedAchievements]);
 
   return (
       <div className="space-y-6 pb-8">
@@ -383,11 +412,14 @@ export default function Profile() {
           <div className="flex justify-center gap-1">
             {[1, 2, 3, 4, 5].map((i) => (
               <button
+                type="button"
                 key={i}
                 onClick={() => setMoodIntensity(i)}
-                className={`big-tap p-1 transition-all active:scale-95 ${i <= moodIntensity ? 'text-usnee-warning' : 'text-usnee-border'}`}
+                aria-label={`Сила состояния ${i} из 5`}
+                aria-pressed={i === moodIntensity}
+                className={`big-tap p-1 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-usnee-focus ${i <= moodIntensity ? 'text-usnee-warning' : 'text-usnee-border'}`}
               >
-                <Star className="h-6 w-6 fill-current" />
+                <Star className="h-6 w-6 fill-current" aria-hidden="true" />
               </button>
             ))}
           </div>
@@ -612,60 +644,77 @@ export default function Profile() {
         <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-usnee-text2">
           <Award className="h-4 w-4" /> Ачивки
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {[...ACHIEVEMENTS]
-            .sort((a, b) => Number(unlockedAchievements.has(b.id)) - Number(unlockedAchievements.has(a.id)))
-            .map((ach) => {
-            const unlocked = unlockedAchievements.has(ach.id);
-            const tier = getAchievementTier(ach.id);
-            const AchIcon = achievementIcon(ach.id);
-            const xp = xpForAchievement(ach.id);
-            const tierColors: Record<string, string> = {
-              common: 'text-usnee-text2',
-              rare: 'text-usnee-info',
-              legendary: 'text-usnee-warning',
-            };
-            const tierLabels: Record<string, string> = {
-              common: '⚪',
-              rare: '🔵',
-              legendary: '🟡',
-            };
-            return (
-              <div
-                key={ach.id}
-                className={`rounded-lg p-3 transition-all ${
-                  unlocked ? 'bg-usnee-surface2' : 'bg-usnee-surface opacity-50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <AchIcon className={`h-5 w-5 ${unlocked ? 'text-usnee-accent' : 'text-usnee-text2'}`} aria-hidden="true" />
-                  <p className={`text-sm font-semibold ${unlocked ? 'text-usnee-text' : 'text-usnee-text2'}`}>
-                    {ach.name}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-usnee-text2">{ach.description}</p>
-                {unlocked ? (
-                  <div className="mt-2 flex items-center justify-between">
-                    <p className="text-[10px] font-medium uppercase text-usnee-success">Разблокировано</p>
-                    <div className={`flex items-center gap-1 text-xs ${tierColors[tier]}`}>
-                      <Zap className="h-3 w-3" aria-hidden="true" />
-                      <span>+{xp} XP</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex items-center gap-1 text-xs text-usnee-text3">
-                    <span>{tierLabels[tier]}</span>
-                    <span className="text-[10px]">{tier === 'legendary' ? 'Легендарная' : tier === 'rare' ? 'Редкая' : 'Обычная'}</span>
-                    <span className="ml-auto flex items-center gap-0.5">
-                      <Zap className="h-3 w-3" aria-hidden="true" />
-                      <span>{xp}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-usnee-surface px-4 py-3">
+          <p className="text-xs text-usnee-text2">
+            Открыто {unlockedAchievements.size} из {ACHIEVEMENTS.length}
+          </p>
+          <div className="h-1.5 w-24 overflow-hidden rounded-sm bg-usnee-surface2" aria-hidden="true">
+            <div
+              className="h-full rounded-sm bg-usnee-brand transition-[width] duration-500"
+              style={{ width: `${Math.round((unlockedAchievements.size / ACHIEVEMENTS.length) * 100)}%` }}
+            />
+          </div>
         </div>
+        {achievementGroups.map((group) => (
+          <div key={group.id} className="space-y-2">
+            <h3 className="flex items-baseline justify-between pt-1 text-[11px] font-semibold uppercase tracking-wider text-usnee-text3">
+              <span>{group.label}</span>
+              <span className="num text-usnee-text2">{group.unlockedCount}/{group.items.length}</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {group.items.map((ach) => {
+                const unlocked = unlockedAchievements.has(ach.id);
+                const tier = getAchievementTier(ach.id);
+                const AchIcon = achievementIcon(ach.id);
+                const xp = xpForAchievement(ach.id);
+                const tierColors: Record<string, string> = {
+                  common: 'text-usnee-text2',
+                  rare: 'text-usnee-info',
+                  legendary: 'text-usnee-warning',
+                };
+                const tierLabels: Record<string, string> = {
+                  common: '⚪',
+                  rare: '🔵',
+                  legendary: '🟡',
+                };
+                return (
+                  <div
+                    key={ach.id}
+                    className={`rounded-lg p-3 transition-all ${
+                      unlocked ? 'bg-usnee-surface2' : 'bg-usnee-surface opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <AchIcon className={`mt-0.5 h-5 w-5 shrink-0 ${unlocked ? 'text-usnee-accent' : 'text-usnee-text2'}`} aria-hidden="true" />
+                      <p className={`text-sm font-semibold leading-snug ${unlocked ? 'text-usnee-text' : 'text-usnee-text2'}`}>
+                        {ach.name}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-xs text-usnee-text2">{ach.description}</p>
+                    {unlocked ? (
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-[10px] font-medium uppercase text-usnee-success">Разблокировано</p>
+                        <div className={`flex items-center gap-1 text-xs ${tierColors[tier]}`}>
+                          <Zap className="h-3 w-3" aria-hidden="true" />
+                          <span>+{xp} XP</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-1 text-xs text-usnee-text3">
+                        <span>{tierLabels[tier]}</span>
+                        <span className="text-[10px]">{tier === 'legendary' ? 'Легендарная' : tier === 'rare' ? 'Редкая' : 'Обычная'}</span>
+                        <span className="ml-auto flex items-center gap-0.5">
+                          <Zap className="h-3 w-3" aria-hidden="true" />
+                          <span>{xp}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Толерантность */}

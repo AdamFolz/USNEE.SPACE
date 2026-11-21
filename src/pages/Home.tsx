@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, BookOpen, ChevronRight } from 'lucide-react';
 import {
   ActiveLocalStates,
   BatchHeroCard,
@@ -200,6 +200,16 @@ export default function Home() {
         onSafety={() => navigate('/safety')}
         onBulk={() => navigate('/add/bulk')}
       />
+
+      <Button
+        variant="secondary"
+        className="w-full"
+        onClick={() => navigate('/learn')}
+      >
+        <BookOpen className="h-4 w-4" aria-hidden="true" />
+        База знаний: тайминги, смеси, первая помощь
+        <ChevronRight className="ml-auto h-4 w-4" aria-hidden="true" />
+      </Button>
 
       {!showFirstRecordEmpty && (
         <section aria-labelledby="home-summary" className="space-y-3">

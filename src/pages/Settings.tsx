@@ -37,6 +37,7 @@ export default function Settings() {
   const [pinNew, setPinNew] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [pinError, setPinError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const [deleteStage, setDeleteStage] = useState(0);
   const [exporting, setExporting] = useState(false);
@@ -131,14 +132,20 @@ export default function Settings() {
       setDeleteStage(deleteStage + 1);
       return;
     }
-    await resetUserData();
-    updateSettings({
-      pinHash: undefined,
-      dailyLimit: undefined,
-      limitSubstance: undefined,
-      onboardingCompleted: false
-    });
-    window.location.reload();
+    setDeleteError('');
+    try {
+      await resetUserData();
+      updateSettings({
+        pinHash: undefined,
+        dailyLimit: undefined,
+        limitSubstance: undefined,
+        onboardingCompleted: false
+      });
+      window.location.reload();
+    } catch {
+      setDeleteStage(0);
+      setDeleteError('Не получилось удалить: браузер не дал доступ к базе. Данные на месте — попробуй закрыть другие вкладки приложения.');
+    }
   };
 
   const handleExport = async () => {
@@ -244,6 +251,7 @@ export default function Settings() {
                 type="checkbox"
                 checked={!!settings.pinHash}
                 onChange={togglePin}
+                aria-label="PIN-код"
                 className="peer sr-only"
               />
               <div className="h-6 w-12 rounded-full bg-usnee-border transition-colors peer-checked:bg-usnee-brand" />
@@ -353,6 +361,11 @@ export default function Settings() {
               Отменить
             </button>
           )}
+          {deleteError && (
+            <p role="alert" className="text-xs text-usnee-danger">
+              {deleteError}
+            </p>
+          )}
 
           <button
             onClick={handleExport}
@@ -389,6 +402,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={!!settings[item.key]}
                   onChange={() => updateSettings({ [item.key]: !settings[item.key] })}
+                  aria-label={item.label}
                   className="peer sr-only"
                 />
                 <div className="h-6 w-12 rounded-full bg-usnee-border transition-colors peer-checked:bg-usnee-brand" />
