@@ -11,6 +11,8 @@ export function evaluateUnlockedAchievements(input: {
   water?: WaterEntry[];
   batches?: Batch[];
   now?: number;
+  /** Настроен экстренный контакт — влияет на ачивку «Есть кому позвонить». */
+  hasEmergencyContact?: boolean;
 }): Set<string> {
   const now = input.now ?? Date.now();
   const entries = input.entries
@@ -25,10 +27,15 @@ export function evaluateUnlockedAchievements(input: {
   if (entries.length >= 1) unlocked.add('first');
   if (entries.some((entry) => new Date(entry.timestamp).getHours() === 3)) unlocked.add('night_owl');
   if (entries.filter((entry) => entry.alone).length >= 3) unlocked.add('lone_wolf');
-  if (new Set(entries.map((entry) => entry.substanceId)).size >= 5) unlocked.add('chemist');
+  if (entries.filter((entry) => entry.alone === false).length >= 10) unlocked.add('not_alone');
+  const uniqueSubstances = new Set(entries.map((entry) => entry.substanceId)).size;
+  if (uniqueSubstances >= 5) unlocked.add('chemist');
+  if (uniqueSubstances >= 8) unlocked.add('variety_8');
   if (entries.some((entry) => (entry.pulse || 0) >= 140)) unlocked.add('pulse_racer');
   if (entries.some((entry) => entry.fentanylTestResult === 'negative')) unlocked.add('fentanyl_slayer');
+  if (entries.filter((entry) => entry.fentanylTestResult === 'negative').length >= 3) unlocked.add('tested_3');
   if (entries.some((entry) => entry.missedShot)) unlocked.add('missed_shot');
+  if (input.hasEmergencyContact) unlocked.add('contact_ready');
 
   const sortedDays = Array.from(new Set(entries.map((entry) => startOfDay(entry.timestamp)))).sort((a, b) => a - b);
   let maxStreak = 0;
@@ -41,7 +48,11 @@ export function evaluateUnlockedAchievements(input: {
       streak = 1;
     }
   }
+  if (maxStreak >= 3) unlocked.add('streak_3');
   if (maxStreak >= 7) unlocked.add('week_bender');
+  if (maxStreak >= 14) unlocked.add('streak_14');
+  if (hasReturnAfterPause(sortedDays, 30)) unlocked.add('phoenix');
+  if (sortedDays.length >= 365) unlocked.add('chronicle');
   if (cleanStreak(entries, now) >= 7) unlocked.add('clean_7');
   if (water.length > 0 && entries.length >= 3) unlocked.add('hydrated');
 
@@ -66,6 +77,15 @@ export function evaluateUnlockedAchievements(input: {
 
 function isNight(ts: number): boolean {
   return new Date(ts).getHours() < 6;
+}
+
+/** Был разрыв больше месяца между днями с записями, и после него человек вернулся. */
+function hasReturnAfterPause(sortedDays: number[], minimalGapDays: number): boolean {
+  const gap = minimalGapDays * DAY;
+  for (let i = 1; i < sortedDays.length; i++) {
+    if (sortedDays[i] - sortedDays[i - 1] >= gap) return true;
+  }
+  return false;
 }
 
 function maxCountInWindow(times: number[], windowMs: number): number {

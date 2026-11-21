@@ -145,10 +145,15 @@ const RARE_ACHIEVEMENTS = new Set([
   'marathon',       // 24h hourly
   'collector',      // 5 sites/day
   'pharmacist',     // batch emptied same day
+  'streak_14',      // 14 days in a row
+  'variety_8',      // 8 substances in history
+  'tested_3',       // 3 negative reagent tests
 ]);
 
 const LEGENDARY_ACHIEVEMENTS = new Set([
   'week_bender',    // 7-day streak — questionable honor
+  'phoenix',        // came back after a month-long pause
+  'chronicle',      // 365 distinct days on record
 ]);
 
 /**

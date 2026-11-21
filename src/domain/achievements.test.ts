@@ -40,6 +40,17 @@ const NEW_COPY: Record<(typeof NEW_IDS)[number], { name: string; description: st
   rank_legend: { name: 'Легенда', description: 'Максимальный ранг. Дальше только продолжать.' }
 };
 
+const EXTENDED_IDS = [
+  'streak_3',
+  'streak_14',
+  'variety_8',
+  'tested_3',
+  'contact_ready',
+  'not_alone',
+  'phoenix',
+  'chronicle'
+] as const;
+
 function entry(partial: Partial<ConsumptionEntry> & Pick<ConsumptionEntry, 'id' | 'timestamp'>): ConsumptionEntry {
   return {
     substanceId: 'meph',
@@ -77,12 +88,14 @@ function unlocked(opts: {
   water?: WaterEntry[];
   batches?: Batch[];
   now?: number;
+  hasEmergencyContact?: boolean;
 }) {
   return evaluateUnlockedAchievements({
     entries: opts.entries ?? [],
     water: opts.water ?? [],
     batches: opts.batches ?? [],
-    now: opts.now
+    now: opts.now,
+    hasEmergencyContact: opts.hasEmergencyContact
   });
 }
 
@@ -101,8 +114,23 @@ describe('ACHIEVEMENTS catalog', () => {
       'first', 'night_owl', 'lone_wolf', 'chemist', 'pulse_racer',
       'fentanyl_slayer', 'missed_shot', 'week_bender', 'clean_7', 'hydrated'
     ]);
-    expect(ids.slice(10)).toEqual([...NEW_IDS]);
+    expect(ids.slice(10, 24)).toEqual([...NEW_IDS]);
+    expect(ids.slice(24)).toEqual([...EXTENDED_IDS]);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('gives every achievement a category and keeps ids unique', () => {
+    const categories = new Set(ACHIEVEMENTS.map((a) => a.category));
+    expect(categories.size).toBeGreaterThanOrEqual(5);
+    for (const id of EXTENDED_IDS) {
+      const row = ACHIEVEMENTS.find((a) => a.id === id);
+      expect(row, id).toBeTruthy();
+      expect(row?.name.length, id).toBeGreaterThan(2);
+      expect(row?.description.length, id).toBeGreaterThan(10);
+    }
+    expect(ACHIEVEMENTS.find((a) => a.id === 'phoenix')?.category).toBe('rare');
+    expect(ACHIEVEMENTS.find((a) => a.id === 'streak_3')?.category).toBe('regularity');
+    expect(ACHIEVEMENTS.find((a) => a.id === 'tested_3')?.category).toBe('safety');
   });
 
   it('keeps original backend titles and descriptions for the 11', () => {
@@ -282,6 +310,65 @@ describe('evaluateUnlockedAchievements — 11 new', () => {
       entry({ id: 'dead', timestamp: now, methodId: 'smoke', reversedAt: now })
     ];
     notHas(unlocked({ now, entries: withReversed }), 'still_alive');
+  });
+});
+
+describe('evaluateUnlockedAchievements — extended set', () => {
+  const now = new Date(2026, 7, 13, 15, 0, 0).getTime();
+
+  it('streak_3 at three consecutive days, streak_14 at fourteen', () => {
+    const days = (count: number) =>
+      Array.from({ length: count }, (_, i) => entry({ id: `d${i}`, timestamp: new Date(2026, 7, 1 + i, 12).getTime() }));
+    notHas(unlocked({ now, entries: days(2) }), 'streak_3');
+    has(unlocked({ now, entries: days(3) }), 'streak_3');
+    notHas(unlocked({ now, entries: days(9) }), 'streak_14');
+    has(unlocked({ now, entries: days(14) }), 'streak_14');
+  });
+
+  it('variety_8 needs eight distinct substances', () => {
+    const make = (count: number) =>
+      Array.from({ length: count }, (_, i) => entry({ id: `v${i}`, substanceId: `s${i}`, timestamp: now - i * HOUR }));
+    notHas(unlocked({ now, entries: make(7) }), 'variety_8');
+    has(unlocked({ now, entries: make(8) }), 'variety_8');
+  });
+
+  it('tested_3 counts negative fentanyl tests, inconclusive does not count', () => {
+    const tests = (results: Array<'negative' | 'inconclusive'>) =>
+      results.map((result, i) => entry({ id: `t${i}`, timestamp: now - i * HOUR, fentanylTestResult: result }));
+    notHas(unlocked({ now, entries: tests(['negative', 'negative', 'inconclusive']) }), 'tested_3');
+    has(unlocked({ now, entries: tests(['negative', 'negative', 'negative']) }), 'tested_3');
+  });
+
+  it('contact_ready comes from settings, not from entries', () => {
+    notHas(unlocked({ now }), 'contact_ready');
+    has(unlocked({ now, hasEmergencyContact: true }), 'contact_ready');
+  });
+
+  it('not_alone needs ten entries with alone=false', () => {
+    const make = (count: number, alone: boolean) =>
+      Array.from({ length: count }, (_, i) => entry({ id: `${alone ? 'a' : 'b'}${i}`, timestamp: now - i * HOUR, alone }));
+    notHas(unlocked({ now, entries: make(9, false) }), 'not_alone');
+    has(unlocked({ now, entries: [...make(9, false), entry({ id: 'x', timestamp: now - 20 * HOUR, alone: false })] }), 'not_alone');
+    notHas(unlocked({ now, entries: make(10, true) }), 'not_alone');
+  });
+
+  it('phoenix only after a pause of a month or more', () => {
+    const shortGap = [
+      entry({ id: 'p1', timestamp: new Date(2026, 5, 1, 12).getTime() }),
+      entry({ id: 'p2', timestamp: new Date(2026, 5, 20, 12).getTime() })
+    ];
+    notHas(unlocked({ now, entries: shortGap }), 'phoenix');
+    const longGap = [
+      entry({ id: 'p1', timestamp: new Date(2026, 4, 1, 12).getTime() }),
+      entry({ id: 'p2', timestamp: new Date(2026, 6, 20, 12).getTime() })
+    ];
+    has(unlocked({ now, entries: longGap }), 'phoenix');
+  });
+
+  it('chronicle at 365 distinct days', () => {
+    const many = Array.from({ length: 365 }, (_, i) => entry({ id: `c${i}`, timestamp: now - i * DAY }));
+    has(unlocked({ now, entries: many }), 'chronicle');
+    notHas(unlocked({ now, entries: many.slice(0, 364) }), 'chronicle');
   });
 });
 
