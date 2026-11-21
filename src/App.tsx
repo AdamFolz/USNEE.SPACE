@@ -26,6 +26,7 @@ import { useOutboxSync } from './hooks/useOutboxSync';
 
 function App() {
   const [dbReady, setDbReady] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   const unlocked = useAppStore((s) => s.unlocked);
   const setUnlocked = useAppStore((s) => s.setUnlocked);
   const settings = useAppStore((s) => s.settings);
@@ -69,14 +70,39 @@ function App() {
         }
         const isTelegram = initTelegramMiniApp();
         trackEvent('app_open', { source: isTelegram ? 'telegram' : 'pwa' });
+      }).catch((error: unknown) => {
+        // IndexedDB недоступна (приватный режим, квота, повреждённая база) — показываем текст, а не вечный спиннер.
+        console.error('USNEE init failed', error);
+        setDbError(error instanceof Error ? error.message : 'не удалось открыть локальную базу');
       });
 
     return unsubscribeViewport;
   }, []);
 
+  if (!dbReady && dbError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-usnee-bg px-5">
+        <div className="w-full max-w-md rounded-card border border-usnee-border bg-usnee-surface p-6 text-center">
+          <h1 className="text-title-md">База на этом устройстве не открылась</h1>
+          <p className="mt-2 text-body-sm text-usnee-text2">
+            Так бывает в приватном режиме браузера или когда мало места. Данные не потеряны — приложение их не удаляет.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 min-h-12 w-full rounded-lg bg-usnee-brand px-4 text-body-sm font-bold text-white transition-transform active:scale-[.99]"
+          >
+            Попробовать снова
+          </button>
+          <p className="mt-3 break-words text-[11px] text-usnee-text3">Технически: {dbError}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!dbReady) {
     return (
-      <div className="flex h-full items-center justify-center bg-usnee-bg">
+      <div className="flex h-full items-center justify-center bg-usnee-bg" role="status" aria-label="Загрузка">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-usnee-accent border-t-transparent" />
       </div>
     );
