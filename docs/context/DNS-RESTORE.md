@@ -1,97 +1,82 @@
-# Восстановление DNS-зоны usnee.space
+# DNS usnee.space — состояние и восстановление
 
-Замер 23.11.2026, авторитативные серверы `launch1.spaceship.net` / `launch2.spaceship.net`.
+Обновлено 23.11.2026 20:30 MSK. Предыдущая версия описывала снос зоны парковкой; ниже — факт после ручного восстановления.
 
-## Что сейчас в зоне
+## Что уже восстановлено (проверено DoH Google + авторитативные NS)
 
-| Имя | Тип | Значение | Источник |
-|---|---|---|---|
-| `@` | A | `18.236.27.87` | парковка Spaceship |
-| `@` | A | `44.232.4.155` | парковка Spaceship |
-| `@` | MX 0 | `mx1.spacemail.com` | интеграция Spacemail (уцелела) |
-| `@` | MX 0 | `mx2.spacemail.com` | интеграция Spacemail (уцелела) |
+| Запись | Значение | Статус |
+|---|---|---|
+| A `@` | 185.199.108.153, .109.153, .110.153, .111.153 | ✅ в зоне |
+| CNAME `www` | adamfolz.github.io | ✅ в зоне |
+| MX `@` | 0 mx1.spacemail.com, 0 mx2.spacemail.com | ✅ в зоне (добавлено 23.11, TTL 30 min) |
+| TXT `_dmarc` | v=DMARC1; p=none; rua=mailto:seksov@proton.me | ✅ в зоне |
+| TXT `@` (SPF) | — | ❌ отсутствует |
+| TXT `spacemail._domainkey` (DKIM) | — | ❌ NXDOMAIN |
 
-Отсутствует всё остальное: `www` — NXDOMAIN, `@` TXT — нет (SPF пропал), `spacemail._domainkey` — NXDOMAIN (DKIM пропал), `_dmarc` — NXDOMAIN, `_github-pages-challenge-adamfolz` — нет. SOA/NS — `launch1/launch2.spaceship.net`.
-
-Что это значит: парковка вернула свои записи и вытеснила прежние; MX выжили только потому, что ими управляет интеграция Spacemail. HTTP apex отдаёт парковочную страницу (openresty, 9255 байт), HTTPS apex — таймаут.
-
-**Экспорта зоны нет.** Ни в workspace, ни в `M:\REPO GET HUY.B`. Значения SPF и DKIM нигде не записаны — брать только из панели Spacemail или перевыпускать DKIM. Не восстанавливать по памяти.
-
-## Порядок восстановления
-
-### 1. Выключить парковку
-
-В панели Spaceship у домена — раздел с продуктами/Website. Пока парковка активна, она будет возвращать свои A-записи поверх (зона уже улетала дважды).
-
-### 2. Забрать почтовые значения из Spacemail
-
-Панель Spacemail → домен usnee.space → DNS-записи. Скопировать целиком:
-
-- SPF: строка вида `v=spf1 ...` (не выдумывать, взять точную).
-- DKIM: селектор `spacemail._domainkey`, публичный ключ `v=DKIM1; k=rsa; p=...`.
-- Если DKIM в панели нет — ключ тоже удалён: перевыпустить в Spacemail, это отдельный шаг, старый публичный ключ не восстановить.
-
-### 3. Внести записи
-
-| # | Тип | Host | Значение | TTL |
-|---|---|---|---|---|
-| 1 | A | `@` | `185.199.108.153` | auto/3600 |
-| 2 | A | `@` | `185.199.109.153` | auto/3600 |
-| 3 | A | `@` | `185.199.110.153` | auto/3600 |
-| 4 | A | `@` | `185.199.111.153` | auto/3600 |
-| 5 | CNAME | `www` | `adamfolz.github.io` | auto/3600 |
-| 6 | TXT | `@` | SPF из Spacemail | auto/3600 |
-| 7 | TXT | `spacemail._domainkey` | DKIM из Spacemail | auto/3600 |
-| 8 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:seksov@proton.me` | auto/3600 |
-| 9 | TXT | `_github-pages-challenge-adamfolz` | только если GitHub покажет значение в Settings → Pages; если не покажет — пропустить | auto/3600 |
-
-Запись 9 необязательна: `gh api repos/AdamFolz/USNEE.SPACE/pages` значения challenge не отдаёт (такого поля в ответе нет), а домен верифицирован ранее — указывать её нужно только когда GitHub сам подсветит требуемое значение. Сейчас её в зоне нет, и Pages работает без неё.
-
-Удалить обе парковочные A: `18.236.27.87`, `44.232.4.155`. MX `mx1/mx2.spacemail.com` не трогать.
-
-Опционально (не обязательны для работы сайта, нужны для строгой проверки почты): `_dmarc` после стабилизации можно ужесточить до `p=quarantine`; CAA-записи нет — Pages выпускает через Let's Encrypt, при желании `CAA @ 0 issue "letsencrypt.org"`.
-
-### 4. Проверить от авторитативного сервера, не из кеша
+Проверка, которая не врёт локальным кешем (Windows держит негативный ответ по SOA до часа):
 
 ```powershell
-Resolve-DnsName usnee.space -Type A   -Server launch1.spaceship.net -DnsOnly
-Resolve-DnsName usnee.space -Type MX  -Server launch1.spaceship.net -DnsOnly
-Resolve-DnsName usnee.space -Type TXT -Server launch1.spaceship.net -DnsOnly
-Resolve-DnsName www.usnee.space       -Server launch1.spaceship.net -DnsOnly
-Resolve-DnsName spacemail._domainkey.usnee.space -Type TXT -Server launch1.spaceship.net -DnsOnly
-Resolve-DnsName _dmarc.usnee.space    -Type TXT -Server launch1.spaceship.net -DnsOnly
+curl.exe -sS 'https://dns.google/resolve?name=usnee.space&type=MX'
+curl.exe -sS 'https://dns.google/resolve?name=usnee.space&type=TXT'
+curl.exe -sS 'https://dns.google/resolve?name=_dmarc.usnee.space&type=TXT'
+curl.exe -sS 'https://dns.google/resolve?name=spacemail._domainkey.usnee.space&type=TXT'
 ```
 
-Ожидаемо: 4 × 185.199.108–111.153 на apex, `www` → `adamfolz.github.io`, TXT содержит SPF и DKIM, `_dmarc` содержит `v=DMARC1`, парковочных A нет.
+`Resolve-DnsName` и `nslookup` после правок в панели показывают старое (кеш клиента/инстанса) — не использовать как единственный источник.
 
-### 5. Проверить отдачу сайта
+## Осталось сделать
+
+1. **SPF и DKIM** — только из панели Spacemail (нужен вход в почтовый ящик; агент пароль не вводит).
+   - SPF: строка `v=spf1 ...` из Spacemail → TXT на `@`.
+   - DKIM: селектор `spacemail._domainkey`, публичный ключ из Spacemail → TXT на `spacemail._domainkey`. Если в панели записи нет — перевыпуск ключа там же.
+   - Без них исходящая почта уходит без подписи и без SPF → спам. Входящая (MX) уже работает.
+2. **Сертификат www** — см. раздел ниже.
+
+## Сертификат и канонический хост
+
+На 23.11 20:23 `gh api repos/AdamFolz/USNEE.SPACE/pages`:
+
+```
+cname=www.usnee.space   https_enforced=False
+cert: {"state":"dns_changed","domains":["www.usnee.space","usnee.space"],"expires_at":"2027-02-06"}
+```
+
+GitHub принял смену custom domain и запросил сертификат на оба имени. Пока не `approved`:
+
+- `http://www.usnee.space` → 200 (сайт доступен по HTTP);
+- `https://usnee.space` → 301 на `https://www.usnee.space`, где TLS невалиден (отдаётся `*.github.io`);
+- `https_enforced` сброшен в `false` переходом PUT и должен быть возвращён в `true` после `approved`.
+
+Порядок:
 
 ```powershell
-curl.exe -sS -o NUL -D - --max-time 20 https://usnee.space/
-curl.exe -sS -o NUL -D - --max-time 20 https://usnee.space/landing/
-curl.exe -sS -o NUL -D - --max-time 20 https://www.usnee.space/
+# ждать approved (не дольше 30 минут за один заход, GitHub может выпускать до нескольких часов)
+gh api repos/AdamFolz/USNEE.SPACE/pages --jq '.https_certificate.state'
+# после approved:
+gh api -X PUT repos/AdamFolz/USNEE.SPACE/pages -f https_enforced=true
+gh api repos/AdamFolz/USNEE.SPACE/pages --jq '.https_certificate.domains'
 ```
 
-Ожидаемо: 200 и `Server: GitHub.com`. Если HTTPS всё ещё отдаёт не тот сертификат — до 30 минут на выпуск/обновление Pages, затем Settings → Pages → Save (перевыпуск).
+Если сертификат не выпускается часами — снять custom domain и привязать заново (`cname=usnee.space`), это запускает свежий выпуск; при этом сайт на несколько минут отдаётся с `adamfolz.github.io/USNEE.SPACE/`.
 
-### 6. Сторона GitHub — уже в порядке, менять ничего не нужно
+## Продукт Alf Website (риск повторного сноса)
 
-`gh api repos/AdamFolz/USNEE.SPACE/pages` на 23.11.2026: `cname=usnee.space`, `https_enforced=true`, `build_type=workflow`, `https_certificate.state=approved`, `domains=["usnee.space"]`, `expires_at=2027-02-06`, `pending_domain_unverified_at=null`.
+В зоне остаётся продуктовая запись `sex → websitebuilder.spaceship.com` (группа Alf Website, TTL 20 min). Она **управляется продуктом**: чекбокса нет, из DNS не удаляется.
 
-Вписывать custom domain заново нужно только если Pages успеет снять верификацию (поле `pending_domain_unverified_at` перестанет быть пустым). Тогда: Settings → Pages → Custom domain `usnee.space` → Save → Enforce HTTPS.
+- Сайт: Alf Website Standard (TRIAL) для `sex.usnee.space`, Product ID `92a01206-3c8a-449a-9575-796266ece428`, старт 08.11.2026, продление **08.12.2026, $5.00/мес, auto-renew включён**.
+- Отключение от домена — в Alf Website Studio (`/application/alf-website-studio/`) в меню «⋮» панели продукта. Программно меню не открывается; нужно ручное действие владельца.
+- До отключения продукт остаётся единственным источником, способным перезаписать зону.
 
-**www отдельно**: сертификат Pages выписан только на apex, поэтому `https://www.usnee.space` даёт `ERR_CERT_COMMON_NAME_INVALID`. После возврата DNS — перевыпуск с www (Settings → Pages → Save), иначе www останется сломанным.
+## Экспорт зоны
 
-## После восстановления — сохранить экспорт
+Снимок до правок: `M:\ARCHIVE\usnee-2026-11-21\dns-zone-2026-11-23.txt` (6 записей как было + DNS-запросы). После любых изменений в панели сохранять новый снимок туда же — зона терялась дважды за сутки.
 
-Панель Spaceship → выгрузка зоны (если есть), иначе скриншот всех записей. Положить копию в `M:\ARCHIVE\usnee-2026-11-21\` и в этот каталог. Зона улетала дважды за сутки — без снимка каждый раз восстанавливать заново.
-
-## Наблюдение
-
-Быстрая проверка одной строкой (запускать после любых правок DNS в панели):
+## Итоговая приёмка (после SPF/DKIM и сертификата)
 
 ```powershell
-Resolve-DnsName usnee.space -Type A -Server launch1.spaceship.net -DnsOnly | Select-Object IPAddress
+curl.exe -sS -o NUL -w "apex=%{http_code} "    https://usnee.space/ --max-time 20
+curl.exe -sS -o NUL -w "www=%{http_code} "     https://www.usnee.space/ --max-time 20
+curl.exe -sS -o NUL -w "landing=%{http_code}`n" https://www.usnee.space/landing/ --max-time 20
 ```
 
-Если снова видны `18.236.27.87` / `44.232.4.155` — парковка опять перезаписала зону.
+Ожидается: 301 на apex, 200 на www и `/landing/`, SAN сертификата содержит `usnee.space` и `www.usnee.space`.
