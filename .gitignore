@@ -1,4 +1,4 @@
-# dependencies
+﻿# dependencies
 node_modules/
 
 # build
@@ -28,4 +28,8 @@ _av*.html
 _avito*.html
 avito_jina.txt
 nul
-hermes/
+
+# приватное, только локально
+.agents/
+.hermes/
+AGENTS.md
