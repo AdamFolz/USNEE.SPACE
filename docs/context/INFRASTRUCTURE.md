@@ -1,12 +1,18 @@
 # Инфраструктура
 
-## Фактическое состояние (проверено 21.11.2026)
+## Фактическое состояние (проверено 23.11.2026)
 
-- **Прод — GitHub Pages**: `https://usnee.space` (SPA в корне, лендинг `/landing/`). Pages включены, custom domain `usnee.space`, `https_enforced=true`, сертификат approved только на apex (до 2027-02-06). Деплой — workflow `.github/workflows/deploy.yml` (push main → typecheck+test+build → CNAME в артефакт).
-- **www.usnee.space сломан по TLS**: DNS верен (CNAME → adamfolz.github.io), но сертификат Pages выписан на `*.github.io` без www в SAN → `ERR_CERT_COMMON_NAME_INVALID`. С `-k` отдаёт 301 на apex. Лечение: Settings → Pages → перевыпуск сертификата с www (действие владельца).
+- **Сайт лежит: DNS-зона usnee.space снесена до парковки.** Авторитативные `launch1/launch2.spaceship.net` отдают на apex только две парковочные A: `18.236.27.87`, `44.232.4.155`. `www` — NXDOMAIN, TXT — нет вообще (SPF, DMARC, DKIM отсутствуют), `spacemail._domainkey` и `_dmarc` — NXDOMAIN, `_github-pages-challenge-adamfolz` — нет. Уцелели только MX `mx1/mx2.spacemail.com` (ими управляет интеграция Spacemail). HTTP apex → 200, `Server: openresty/1.31.8.1`, 9255 байт парковочной страницы; HTTPS apex → таймаут (сертификата на парковочном IP нет). Восстановление — см. `DNS-RESTORE.md`: владелец в панели Spaceship.
+- **Сторона GitHub Pages цела**: `gh api repos/AdamFolz/USNEE.SPACE/pages` → `cname=usnee.space`, `https_enforced=true`, `build_type=workflow`, `https_certificate.state=approved`, `domains=["usnee.space"]`, `expires_at=2027-02-06`, `pending_domain_unverified_at=null`. На GitHub ничего переделывать не нужно — хватит вернуть A/CNAME в DNS.
+- **История зоны утеряна**: экспорта зоны нет ни в workspace, ни в `M:\REPO GET HUY.B`; значения SPF/DKIM нигде не записаны. Восстанавливать только из панели Spacemail или перевыпуском DKIM — не по памяти.
 - **VPS `201.3.225.93` фактически мёртв для HTTP**: ping проходит, TCP 22/80/443 формально открыты, но HTTPS и HTTP не отвечают (timeout, код 000). Использовать нельзя.
 - **Домены блупринта мертвы**: `seksov.love` и `api.seksov.love` — NXDOMAIN (nslookup 8.8.8.8).
 - Бэкенд не развёрнут: `VITE_API_BASE_URL` пуст, транспорт выключен, outbox локальный (см. API-CONTRACT.md).
+
+## Предыдущий замер (21.11.2026, до сноса зоны)
+
+- Apex работал: Chrome fetch `https://usnee.space/` → 200, 4496 байт, без редиректа; DNS apex → 185.199.108–111.153, `www` CNAME → `adamfolz.github.io`.
+- **www был сломан по TLS**: сертификат `*.github.io` (Let's Encrypt YR1, 2026-10-01 → 2026-12-30) без `www.usnee.space` в SAN → `ERR_CERT_COMMON_NAME_INVALID`. Лечение после возврата DNS: перевыпуск сертификата Pages с www (действие владельца).
 
 ## Блупринт (июль 2026, не развёрнут)
 
