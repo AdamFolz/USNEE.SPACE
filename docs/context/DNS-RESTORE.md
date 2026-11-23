@@ -10,7 +10,7 @@
 | CNAME `www` | adamfolz.github.io | ✅ в зоне |
 | MX `@` | 0 mx1.spacemail.com, 0 mx2.spacemail.com | ✅ в зоне (добавлено 23.11, TTL 30 min) |
 | TXT `_dmarc` | v=DMARC1; p=none; rua=mailto:seksov@proton.me | ✅ в зоне |
-| TXT `@` (SPF) | — | ❌ отсутствует |
+| TXT `@` (SPF) | v=spf1 include:spf.spacemail.com ~all | ✅ в зоне (значение из официального блога Spaceship, не выдумано) |
 | TXT `spacemail._domainkey` (DKIM) | — | ❌ NXDOMAIN |
 
 Проверка, которая не врёт локальным кешем (Windows держит негативный ответ по SOA до часа):
@@ -26,10 +26,11 @@ curl.exe -sS 'https://dns.google/resolve?name=spacemail._domainkey.usnee.space&t
 
 ## Осталось сделать
 
-1. **SPF и DKIM** — только из панели Spacemail (нужен вход в почтовый ящик; агент пароль не вводит).
-   - SPF: строка `v=spf1 ...` из Spacemail → TXT на `@`.
-   - DKIM: селектор `spacemail._domainkey`, публичный ключ из Spacemail → TXT на `spacemail._domainkey`. Если в панели записи нет — перевыпуск ключа там же.
-   - Без них исходящая почта уходит без подписи и без SPF → спам. Входящая (MX) уже работает.
+1. **DKIM — единственное, что осталось по почте** — только из панели Spacemail (нужен вход в почтовый ящик; агент пароль не вводит).
+   - Открыть Spacemail → домен usnee.space → раздел аутентификации/DKIM.
+   - Если ключ есть: скопировать селектор `spacemail._domainkey` и строку `v=DKIM1; k=rsa; p=...` → добавить TXT.
+   - Если ключа нет: сгенерировать новый там же и только потом копировать в DNS (старый публичный ключ после удаления не восстановить).
+   - Без DKIM исходящая почта не подписана; SPF и DMARC уже на месте.
 2. **Сертификат www** — см. раздел ниже.
 
 ## Сертификат и канонический хост
