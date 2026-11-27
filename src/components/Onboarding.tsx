@@ -107,6 +107,14 @@ export default function Onboarding({ onDone }: OnboardingProps) {
         ))}
       </div>
 
+      {current === slides.length - 1 && (
+        <p className="px-6 pb-4 text-center text-[11px] leading-relaxed text-usnee-text3">
+          USNEE — инструмент самонаблюдения, не поощрение употребления. Приложение не оказывает медицинскую помощь, не вызывает скорую и не заменяет экстренные службы: при угрозе жизни звони 112 сам.
+          <br />
+          18+
+        </p>
+      )}
+
       {/* Navigation */}
       <div className="flex items-center justify-between gap-4 px-6 pb-8">
         <button
