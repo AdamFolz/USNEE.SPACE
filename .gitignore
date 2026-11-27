@@ -33,3 +33,7 @@ nul
 .agents/
 .hermes/
 AGENTS.md
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
