@@ -31,7 +31,7 @@
 </head>
 <body>
   <div id="root"></div>
-  <div id="boot-fallback" hidden style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0f0d0b;color:#efe8db;z-index:9999">
+  <div id="boot-fallback" hidden style="position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0f0d0b;color:#efe8db;z-index:9999">
     <p style="margin:0;font-size:17px;line-height:1.4">Приложение не загрузилось.</p>
     <p style="margin:0;font-size:14px;opacity:.7;max-width:32ch">Обычно помогает сброс кеша: нажмите кнопку ниже — данные на устройстве останутся.</p>
     <button id="boot-retry" type="button" style="padding:12px 20px;border-radius:12px;border:1px solid #3a332c;background:#1b1714;color:#efe8db;font-size:15px;cursor:pointer">Перезагрузить без кеша</button>
@@ -42,7 +42,7 @@
       var button = document.getElementById('boot-retry');
 
       function showFallback() {
-        if (fallback) fallback.hidden = false;
+        if (fallback) fallback.style.display = 'flex';
       }
 
       // Если за 7 секунд ничего не отрисовалось — показываем понятное состояние

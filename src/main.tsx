@@ -15,3 +15,15 @@ ReactDOM.createRoot(root).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// Гасим boot-заглушку из index.html только после реального монтирования.
+// Если приложение не отрисуется за 7 с, таймер в index.html покажет её снова.
+const hideBootFallback = () => {
+  const fallback = document.getElementById('boot-fallback');
+  if (fallback && root.childElementCount > 0) {
+    fallback.style.display = 'none';
+    return;
+  }
+  requestAnimationFrame(hideBootFallback);
+};
+requestAnimationFrame(hideBootFallback);
